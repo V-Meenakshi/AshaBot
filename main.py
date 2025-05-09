@@ -222,7 +222,7 @@ def health_check():
     """API health check endpoint"""
     return {"status": "ok", "message": "Asha AI API is running"}
 
-if _name_ == "_main_":
+if __name__ == "__main__":
     import uvicorn
     # Get port from environment variable for cloud deployment
     port = int(os.environ.get("PORT", 8000))
