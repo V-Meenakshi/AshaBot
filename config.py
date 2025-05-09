@@ -1,9 +1,16 @@
-GEMINI_API_KEY = "AIzaSyA4W-NBTP4GN1CYjPHu9Hv6X_w8CPM6Q-E"
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Neo4j Configuration
-NEO4J_URI = "neo4j+s://82a0c733.databases.neo4j.io"
-NEO4J_USER = "neo4j"
-NEO4J_PASSWORD = "5WXzdapgQswWJ70VJABPdLOsWc1uO0nXzdvGoTESVFA"
+NEO4J_URI = os.getenv("NEO4J_URI")
+NEO4J_USER = os.getenv("NEO4J_USERNAME")  # Note: Match the variable name with .env
+NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
+
+# API Keys
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # RAG Configuration
 CHUNK_SIZE = 500

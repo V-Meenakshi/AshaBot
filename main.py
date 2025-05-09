@@ -1,9 +1,12 @@
+
 #main.py
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import secrets
+import os
 
 # Import your service modules
 from services.jobs_service import JobsService
@@ -17,6 +20,15 @@ from services.auth_service import SimpleAuthService, User, UserCreate
 app = FastAPI(title="Asha AI Chatbot API")
 security = HTTPBasic()
 auth_service = SimpleAuthService()  # Create a single instance
+
+# Configure CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins, adjust for production
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
 
 # Dependency injection for services
 def get_jobs_service():
@@ -77,6 +89,11 @@ def get_current_user(credentials: HTTPBasicCredentials = Depends(security)):
             headers={"WWW-Authenticate": "Basic"},
         )
     return user
+
+# Root endpoint for health check
+@app.get("/")
+async def root():
+    return {"status": "API is running", "version": "1.0.0"}
 
 # Authentication routes
 @app.post("/users", response_model=User)
@@ -200,10 +217,13 @@ async def get_mentor_services(current_user: User = Depends(get_current_user),
         return {"services": services}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching mentor services: {str(e)}")
+@app.get("/health")
+def health_check():
+    """API health check endpoint"""
+    return {"status": "ok", "message": "Asha AI API is running"}
 
-
-if __name__ == "__main__":
+if _name_ == "_main_":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-    # Add this at the bottom of main.py
-    
+    # Get port from environment variable for cloud deployment
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)

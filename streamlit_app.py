@@ -1,8 +1,10 @@
+
 #streamlit_app.py
 import streamlit as st
 import requests
 import base64
 import json
+import os
 
 # App configuration
 st.set_page_config(
@@ -78,10 +80,8 @@ st.markdown("""<style>
     }
     </style>""", unsafe_allow_html=True)
 
-# Constants
-import os
+# Get API URL from environment variable or use default for local development
 API_URL = os.environ.get("API_URL", "http://localhost:8000")
-
 
 # Initialize session state
 if "chat_history" not in st.session_state:
@@ -100,10 +100,18 @@ if "password" not in st.session_state:
     st.session_state.password = None
 if "show_login" not in st.session_state:
     st.session_state.show_login = True
+if "connection_error" not in st.session_state:
+    st.session_state.connection_error = None
 
 # Authentication functions
 def signup():
     st.title("Sign Up")
+    
+    # Show any connection errors
+    if st.session_state.connection_error:
+        st.error(f"Connection Error: {st.session_state.connection_error}")
+        if st.button("Clear Error"):
+            st.session_state.connection_error = None
     
     with st.container():
         st.markdown('<div class="auth-form">', unsafe_allow_html=True)
@@ -129,7 +137,8 @@ def signup():
                 # Send request to create user
                 response = requests.post(
                     f"{API_URL}/users",
-                    json=user_data
+                    json=user_data,
+                    timeout=10  # Add timeout for better error handling
                 )
                 
                 if response.status_code == 200:
@@ -142,6 +151,11 @@ def signup():
                     except:
                         error_detail = response.text
                     st.error(f"Signup failed: {error_detail}")
+            except requests.exceptions.ConnectionError as e:
+                st.session_state.connection_error = f"Cannot connect to API server at {API_URL}. Please check if the backend is running and accessible."
+                st.error(st.session_state.connection_error)
+            except requests.exceptions.Timeout:
+                st.error(f"Connection to {API_URL} timed out. Please try again later.")
             except Exception as e:
                 st.error(f"Error during signup: {str(e)}")
         st.markdown('</div>', unsafe_allow_html=True)
@@ -153,6 +167,12 @@ def signup():
 
 def signin():
     st.title("Log In")
+    
+    # Show any connection errors
+    if st.session_state.connection_error:
+        st.error(f"Connection Error: {st.session_state.connection_error}")
+        if st.button("Clear Error"):
+            st.session_state.connection_error = None
     
     with st.container():
         st.markdown('<div class="auth-form">', unsafe_allow_html=True)
@@ -174,7 +194,8 @@ def signin():
                 response = requests.post(
                     f"{API_URL}/jobs",  # Using jobs endpoint as a test
                     json={},  # Empty filter
-                    headers={"Authorization": f"Basic {auth_b64}"}
+                    headers={"Authorization": f"Basic {auth_b64}"},
+                    timeout=10  # Add timeout for better error handling
                 )
                 
                 if response.status_code == 200 or response.status_code == 401:  # 401 means authentication failed
@@ -188,6 +209,11 @@ def signin():
                         st.error("Invalid username or password")
                 else:
                     st.error(f"Error: {response.status_code}")
+            except requests.exceptions.ConnectionError:
+                st.session_state.connection_error = f"Cannot connect to API server at {API_URL}. Please check if the backend is running and accessible."
+                st.error(st.session_state.connection_error)
+            except requests.exceptions.Timeout:
+                st.error(f"Connection to {API_URL} timed out. Please try again later.")
             except Exception as e:
                 st.error(f"Error during login: {str(e)}")
         st.markdown('</div>', unsafe_allow_html=True)
@@ -270,8 +296,17 @@ def process_message(user_input):
                     st.rerun()
                 else:
                     st.error(f"Failed to get response from Asha: {response.status_code}")
+            except requests.exceptions.ConnectionError:
+                error_msg = f"Cannot connect to API server at {API_URL}. Please check if the backend is running and accessible."
+                st.error(error_msg)
+                st.session_state.chat_history.append({"role": "assistant", "content": f"❌ {error_msg}"})
+            except requests.exceptions.Timeout:
+                error_msg = f"Connection to {API_URL} timed out. Please try again later."
+                st.error(error_msg)
+                st.session_state.chat_history.append({"role": "assistant", "content": f"❌ {error_msg}"})
             except Exception as e:
                 st.error(f"Error communicating with API: {str(e)}")
+                st.session_state.chat_history.append({"role": "assistant", "content": f"❌ Error: {str(e)}"})
 
 # Authentication check and handling
 if not st.session_state.authenticated:
@@ -292,7 +327,7 @@ st.markdown("""Your AI career assistant dedicated to helping women find jobs, di
 
 # User info in sidebar
 with st.sidebar:
-    st.markdown(f"**Logged in as:** {st.session_state.username}")
+    st.markdown(f"*Logged in as:* {st.session_state.username}")
     if st.button("Logout"):
         logout()
     
@@ -344,7 +379,7 @@ with chat_container:
             if 'data' in message and 'jobs' in message['data'] and message['data']['jobs']:
                 with st.expander("📊 Job Listings", expanded=True):
                     for job in message['data']['jobs']:
-                        st.markdown(f"**{job['role']} at {job['company_name']}**")
+                        st.markdown(f"{job['role']} at {job['company_name']}")
                         
                         # Create two columns for job details
                         col1, col2 = st.columns(2)
@@ -352,7 +387,7 @@ with chat_container:
                             st.write(f"📍 Location: {job.get('location', 'Not specified')}")
                             st.write(f"🏠 Remote: {'Yes' if job.get('remote', False) else 'No'}")
                             if job.get('hire_time'):
-                                st.write(f"⏱️ Hire Time: {job.get('hire_time')}")
+                                st.write(f"⏱ Hire Time: {job.get('hire_time')}")
                         with col2:
                             if job.get('company_industry'):
                                 st.write(f"🏢 Industry: {job.get('company_industry')}")
@@ -386,7 +421,7 @@ with chat_container:
                         with col2:
                             st.write(f"🌐 Mode: {event.get('mode', 'Not specified')}")
                             if 'categories' in event and event['categories']:
-                                st.write(f"🏷️ Categories: {', '.join(event['categories'])}")
+                                st.write(f"🏷 Categories: {', '.join(event['categories'])}")
                         
                         # Display complete event description without truncation
                         if event.get('about'):
@@ -400,7 +435,7 @@ with chat_container:
                 with st.expander("👩‍💼 Mentor Recommendations", expanded=True):
                     for mentor in message['data']['mentors']:
                         st.markdown(f"### {mentor['name']}")
-                        st.markdown(f"**{mentor['role']} at {mentor['company']}**")
+                        st.markdown(f"{mentor['role']} at {mentor['company']}")
                         
                         # Create two columns for mentor details
                         col1, col2 = st.columns(2)
@@ -409,7 +444,7 @@ with chat_container:
                         with col2:
                             if mentor.get('services') and len(mentor['services']) > 0:
                                 services = [s.strip() for s in mentor['services']]
-                                st.write(f"🛠️ Services: {', '.join(services)}")
+                                st.write(f"🛠 Services: {', '.join(services)}")
                         
                         st.markdown("---")       
 
