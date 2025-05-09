@@ -1,0 +1,10 @@
+GEMINI_API_KEY = "AIzaSyA4W-NBTP4GN1CYjPHu9Hv6X_w8CPM6Q-E"
+
+# Neo4j Configuration
+NEO4J_URI = "neo4j+s://82a0c733.databases.neo4j.io"
+NEO4J_USER = "neo4j"
+NEO4J_PASSWORD = "5WXzdapgQswWJ70VJABPdLOsWc1uO0nXzdvGoTESVFA"
+
+# RAG Configuration
+CHUNK_SIZE = 500
+CHUNK_OVERLAP = 50
