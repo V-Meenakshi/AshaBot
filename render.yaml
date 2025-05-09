@@ -45,4 +45,4 @@ services:
 
 databases:
   - name: neo4j-db
-    type: neo4j
+    databaseType: neo4j
