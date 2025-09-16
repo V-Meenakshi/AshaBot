@@ -1,4 +1,3 @@
-
 #main.py
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
@@ -217,10 +216,22 @@ async def get_mentor_services(current_user: User = Depends(get_current_user),
         return {"services": services}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching mentor services: {str(e)}")
+        
 @app.get("/health")
-def health_check():
-    """API health check endpoint"""
-    return {"status": "ok", "message": "Asha AI API is running"}
+def health_check(db: JobsService = Depends(get_jobs_service)):
+    """
+    API health check endpoint that also queries the database
+    to keep the connection alive.
+    """
+    try:
+        # A simple query to keep the DB connection active
+        db.get_locations() 
+        return {"status": "ok", "message": "Asha AI API is running and connected to the database."}
+    except Exception as e:
+        raise HTTPException(
+            status_code=503, 
+            detail=f"Database connection failed: {str(e)}"
+        )
 
 if __name__ == "__main__":
     import uvicorn
